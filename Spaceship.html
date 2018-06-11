@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Spaceship</title>
+
+    <style>
+        body {
+            background-color: black;
+        }
+
+        canvas {
+            border: 1px solid white;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="1280" height="720"></canvas>
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext("2d");
+        var mouse = { x: -1, y: -1 };
+        var mouseHeld = false;
+        var keysHeld = {};
+        var globalScale = 1;
+        document.getElementById('canvas').addEventListener('mousedown', mouseDown);
+        document.getElementById('canvas').addEventListener('mouseup', mouseUp);
+        document.getElementById('canvas').addEventListener('mousemove', updateMousePosition);
+        document.getElementById('canvas').addEventListener('wheel', scrollWheel);
+        document.addEventListener('keydown', keyDown);
+        document.addEventListener('keyup', keyUp);
+
+        var spaceship = new Spaceship();
+        var lasers = [];
+        var astroids = [];
+        var astroidImage = new Image();
+        astroidImage.src = "Resources/Images/astroid.png";
+        astroids.push(new Astroid(canvas.width * 0.25, canvas.height * 0.25, 1, Math.PI / 256));
+        astroids.push(new Astroid(canvas.width * 0.75, canvas.height * 0.25, 1, Math.PI / 256));
+        astroids.push(new Astroid(canvas.width * 0.25, canvas.height * 0.75, 1, Math.PI / 256));
+        astroids.push(new Astroid(canvas.width * 0.75, canvas.height * 0.75, 1, Math.PI / 256));
+
+        setInterval(frame, 1000 / 60); // 60 FPS
+
+        function frame() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(globalScale, 0, 0, globalScale, -(globalScale - 1) * canvas.width / 2, -(globalScale - 1) * canvas.height / 2);
+
+            for (var i = 0; i < astroids.length; i++) {
+                astroids[i].move();
+                astroids[i].draw();
+            }
+
+            spaceship.update();
+            spaceship.move();
+            spaceship.draw();
+
+            for (var i = 0; i < lasers.length; i++) {
+                lasers[i].move();
+                lasers[i].draw();
+            }
+        }
+
+        function Spaceship() {
+            this.x = canvas.width / 2;
+            this.y = canvas.height / 2;
+            this.thrust = 0.25;
+            this.laserSpeed = 7;
+            this.laserCooldown = 0;
+            this.xVel = 0;
+            this.yVel = 0;
+            this.rcsUp = false;
+            this.rcsLeft = false;
+            this.rcsDown = false;
+            this.rcsRight = false;
+            this.images = {
+                body: { image: new Image() },
+                rcs: { image: new Image() },
+                gun: { image: new Image() },
+                laser: { image: new Image() }
+            };
+
+            this.images.body.image.src = "Resources/Images/spaceship.png";
+            this.images.body.scale = 0.2;
+
+            this.images.rcs.image.src = "Resources/Images/rcs.png";
+            this.images.rcs.scale = 0.2;
+
+            this.images.gun.image.src = "Resources/Images/gun.png";
+            this.images.gun.scale = 0.15;
+
+            this.images.laser.image.src = "Resources/Images/laser.jpg";
+            this.images.laser.scale = 0.5;
+
+            this.draw = function () {
+                if (this.rcsUp) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(0);
+                    ctx.drawImage(this.images.rcs.image, 0 - this.images.rcs.scale * this.images.rcs.image.width / 2, 0 - this.images.rcs.scale * this.images.rcs.image.height, this.images.rcs.scale * this.images.rcs.image.width, this.images.rcs.scale * this.images.rcs.image.height);
+                    ctx.restore();
+                }
+
+                if (this.rcsRight) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.drawImage(this.images.rcs.image, 0 - this.images.rcs.scale * this.images.rcs.image.width / 2, 0 - this.images.rcs.scale * this.images.rcs.image.height, this.images.rcs.scale * this.images.rcs.image.width, this.images.rcs.scale * this.images.rcs.image.height);
+                    ctx.restore();
+                }
+
+                if (this.rcsDown) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(Math.PI);
+                    ctx.drawImage(this.images.rcs.image, 0 - this.images.rcs.scale * this.images.rcs.image.width / 2, 0 - this.images.rcs.scale * this.images.rcs.image.height, this.images.rcs.scale * this.images.rcs.image.width, this.images.rcs.scale * this.images.rcs.image.height);
+                    ctx.restore();
+                }
+
+                if (this.rcsLeft) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(Math.PI * 3 / 2);
+                    ctx.drawImage(this.images.rcs.image, 0 - this.images.rcs.scale * this.images.rcs.image.width / 2, 0 - this.images.rcs.scale * this.images.rcs.image.height, this.images.rcs.scale * this.images.rcs.image.width, this.images.rcs.scale * this.images.rcs.image.height);
+                    ctx.restore();
+                }
+
+                ctx.drawImage(this.images.body.image, this.x - this.images.body.scale * this.images.body.image.width / 2, this.y - this.images.body.scale * this.images.body.image.height / 2, this.images.body.scale * this.images.body.image.width, this.images.body.scale * this.images.body.image.height);
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.getGunAngle() + Math.PI / 2);
+                ctx.drawImage(this.images.gun.image, 0 - this.images.gun.scale * this.images.gun.image.width / 2, 0 - this.images.gun.scale * this.images.gun.image.height, this.images.gun.scale * this.images.gun.image.width, this.images.gun.scale * this.images.gun.image.height);
+                ctx.restore();
+            };
+
+            this.update = function () {
+                this.laserCooldown -= 1;
+
+                // W
+                if (keysHeld[87]) {
+                    this.thrustUp();
+                } else {
+                    this.thrustUpStop();
+                }
+
+                // A
+                if (keysHeld[65]) {
+                    this.thrustLeft();
+                } else {
+                    this.thrustLeftStop();
+                }
+
+                // S
+                if (keysHeld[83]) {
+                    this.thrustDown();
+                } else {
+                    this.thrustDownStop();
+                }
+
+                // D
+                if (keysHeld[68]) {
+                    this.thrustRight();
+                } else {
+                    this.thrustRightStop();
+                }
+
+                // Mouse Held
+                if (mouseHeld) {
+                    if (this.laserCooldown <= 0) {
+                        lasers.push(new Laser(this));
+                        this.laserCooldown = 30;
+                    }
+                }
+            };
+
+            this.thrustUp = function () {
+                this.yVel -= this.thrust;
+                this.rcsDown = true;
+            };
+
+            this.thrustUpStop = function () {
+                this.rcsDown = false;
+            };
+
+            this.thrustLeft = function () {
+                this.xVel -= this.thrust;
+                this.rcsRight = true;
+            };
+
+            this.thrustLeftStop = function () {
+                this.rcsRight = false;
+            };
+
+            this.thrustDown = function () {
+                this.yVel += this.thrust;
+                this.rcsUp = true;
+            };
+
+            this.thrustDownStop = function () {
+                this.rcsUp = false;
+            };
+
+            this.thrustRight = function () {
+                this.xVel += this.thrust;
+                this.rcsLeft = true;
+            };
+
+            this.thrustRightStop = function () {
+                this.rcsLeft = false;
+            };
+
+            this.move = function () {
+                this.x += this.xVel;
+                this.y += this.yVel;
+
+                if (this.x > canvas.width * 0.75 || this.x < canvas.width * 0.25) {
+                    this.x -= this.xVel;
+
+                    var allObjects = lasers.concat(astroids);
+
+                    for (var i = 0; i < allObjects.length; i++) {
+                        allObjects[i].x -= this.xVel;
+                    }
+                }
+
+                if (this.y > canvas.height * 0.75 || this.y < canvas.height * 0.25) {
+                    this.y -= this.yVel;
+
+                    var allObjects = lasers.concat(astroids);
+
+                    for (var i = 0; i < allObjects.length; i++) {
+                        allObjects[i].y -= this.yVel;
+                    }
+                }
+
+                console.log('X: ' + this.x + ', Y: ' + this.y);
+            };
+
+            this.getGunAngle = function () {
+                return Math.atan2(mouse.y - this.y, mouse.x - this.x);
+            };
+        }
+
+        function Laser(spaceship) {
+            this.x = spaceship.x;
+            this.y = spaceship.y;
+            this.angle = spaceship.getGunAngle();
+            this.xVel = spaceship.xVel + Math.cos(this.angle) * spaceship.laserSpeed;
+            this.yVel = spaceship.yVel + Math.sin(this.angle) * spaceship.laserSpeed;
+            this.images = {
+                laser: spaceship.images.laser
+            };
+
+            this.draw = function () {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle + Math.PI / 2);
+                ctx.drawImage(this.images.laser.image, 0 - this.images.laser.scale * this.images.laser.image.width / 2, 0 - this.images.laser.scale * this.images.laser.image.height, this.images.laser.scale * this.images.laser.image.width, this.images.laser.scale * this.images.laser.image.height);
+                ctx.restore();
+            };
+
+            this.move = function () {
+                this.x += this.xVel;
+                this.y += this.yVel;
+            }
+        }
+
+        function Astroid(x, y, size, rotationalSpeed) {
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.rotation = 0;
+            this.rotationalSpeed = rotationalSpeed;
+            this.images = {
+                body: { image: astroidImage }
+            };
+
+            this.images.body.scale = this.size;
+
+            this.draw = function () {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.drawImage(this.images.body.image, 0 - this.images.body.scale * this.images.body.image.width / 2, 0 - this.images.body.scale * this.images.body.image.height / 2, this.images.body.scale * this.images.body.image.width, this.images.body.scale * this.images.body.image.height);
+                ctx.restore();
+            };
+
+            this.move = function () {
+                this.rotation += this.rotationalSpeed;
+            };
+        }
+
+        function mouseDown(evt) {
+            mouseHeld = true;
+        }
+
+        function mouseUp(evt) {
+            mouseHeld = false;
+        }
+
+        function keyDown(evt) {
+            keysHeld[evt.keyCode] = true;
+        }
+
+        function keyUp(evt) {
+            keysHeld[evt.keyCode] = false;
+        }
+
+        function updateMousePosition(evt) {
+            var rect = canvas.getBoundingClientRect();
+            mouse.x = evt.clientX - rect.left;
+            mouse.y = evt.clientY - rect.top;
+        }
+
+        function scrollWheel(evt) {
+            var magnitude = evt.deltaY;
+            var zoomPower = 5000;
+
+            if (magnitude < 0) {
+                magnitude *= -1;
+                globalScale *= 1 + (magnitude / zoomPower);
+            } else {
+                globalScale *= 1 - (magnitude / zoomPower);
+            }
+        }
+    </script>
+</body>
