@@ -42,6 +42,11 @@
         astroids.push(new Astroid(canvas.width * 0.25, canvas.height * 0.75, 1, Math.PI / 256));
         astroids.push(new Astroid(canvas.width * 0.75, canvas.height * 0.75, 1, Math.PI / 256));
 
+        var density = 4000;
+        for (var i = 0; i < density; i++) {
+            astroids.push(new Astroid(Math.random() * 200000 - 100000, Math.random() * 200000 - 100000, Math.random() * 2.75 + 0.25, Math.PI / 256));
+        }
+
         setInterval(frame, 1000 / 60); // 60 FPS
 
         function frame() {
@@ -70,6 +75,7 @@
             this.thrust = 0.25;
             this.laserSpeed = 7;
             this.laserCooldown = 0;
+            this.laserCooldownFilled = 15;
             this.xVel = 0;
             this.yVel = 0;
             this.rcsUp = false;
@@ -172,7 +178,7 @@
                 if (mouseHeld) {
                     if (this.laserCooldown <= 0) {
                         lasers.push(new Laser(this));
-                        this.laserCooldown = 30;
+                        this.laserCooldown = this.laserCooldownFilled;
                     }
                 }
             };
@@ -214,30 +220,12 @@
             };
 
             this.move = function () {
-                this.x += this.xVel;
-                this.y += this.yVel;
+                var allObjects = lasers.concat(astroids);
 
-                if (this.x > canvas.width * 0.75 || this.x < canvas.width * 0.25) {
-                    this.x -= this.xVel;
-
-                    var allObjects = lasers.concat(astroids);
-
-                    for (var i = 0; i < allObjects.length; i++) {
-                        allObjects[i].x -= this.xVel;
-                    }
+                for (var i = 0; i < allObjects.length; i++) {
+                    allObjects[i].x -= this.xVel;
+                    allObjects[i].y -= this.yVel;
                 }
-
-                if (this.y > canvas.height * 0.75 || this.y < canvas.height * 0.25) {
-                    this.y -= this.yVel;
-
-                    var allObjects = lasers.concat(astroids);
-
-                    for (var i = 0; i < allObjects.length; i++) {
-                        allObjects[i].y -= this.yVel;
-                    }
-                }
-
-                console.log('X: ' + this.x + ', Y: ' + this.y);
             };
 
             this.getGunAngle = function () {
