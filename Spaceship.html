@@ -25,6 +25,8 @@
         var mouseHeld = false;
         var keysHeld = {};
         var globalScale = 1;
+        var MAX_DEPTH = 5;
+        var grid = new Grid(-100000, 100000, -100000, 100000, 0);
         document.getElementById('canvas').addEventListener('mousedown', mouseDown);
         document.getElementById('canvas').addEventListener('mouseup', mouseUp);
         document.getElementById('canvas').addEventListener('mousemove', updateMousePosition);
@@ -66,7 +68,32 @@
             for (var i = 0; i < lasers.length; i++) {
                 lasers[i].move();
                 lasers[i].draw();
+
+                var point = lasers[i].getCollisionPoint();
+                var zone = grid.getZone(point.x, point.y);
+                for (var j = 0; j < zone.length; j++) {
+                    if (lasers[i].collideWith(zone[j])) {
+                        lasers.splice(i, 1);
+                        i--;
+                        var index = astroids.indexOf(zone[j]);
+                        astroids.splice(index, 1);
+                        zone.splice(j, 1);
+                        break;
+                    }
+                }
             }
+
+            // \
+            if (keysHeld[220]) {
+                grid.draw();
+            }
+
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = 'white';
+            ctx.font = '30px Arial';
+            ctx.fillText('Remaining Astroids: ' + astroids.length.toLocaleString('en'), 4, 34);
+            ctx.restore();
         }
 
         function Spaceship() {
@@ -220,11 +247,24 @@
             };
 
             this.move = function () {
-                var allObjects = lasers.concat(astroids);
+                for (var i = 0; i < lasers.length; i++) {
+                    lasers[i].x -= this.xVel;
+                    lasers[i].y -= this.yVel;
+                }
 
-                for (var i = 0; i < allObjects.length; i++) {
-                    allObjects[i].x -= this.xVel;
-                    allObjects[i].y -= this.yVel;
+                for (var i = 0; i < astroids.length; i++) {
+                    var newX = astroids[i].x - this.xVel;
+                    var newY = astroids[i].y - this.yVel;
+                    var newZone = grid.getZone(newX, newY);
+                    if (astroids[i].zone != newZone) {
+                        var index = astroids[i].zone.indexOf(astroids[i]);
+                        astroids[i].zone.splice(index, 1);
+                        newZone.push(astroids[i]);
+                        astroids[i].zone = newZone;
+                    }
+
+                    astroids[i].x = newX;
+                    astroids[i].y = newY;
                 }
             };
 
@@ -255,11 +295,29 @@
                 this.x += this.xVel;
                 this.y += this.yVel;
             }
+
+            this.getCollisionPoint = function () {
+                return {
+                    x: this.x + this.images.laser.image.height * this.images.laser.scale * Math.cos(this.angle),
+                    y: this.y + this.images.laser.image.height * this.images.laser.scale * Math.sin(this.angle)
+                };
+            };
+
+            this.getDistanceTo = function (astroid) {
+                var point = this.getCollisionPoint();
+                return Math.hypot(astroid.y - point.y, astroid.x - point.x);
+            };
+
+            this.collideWith = function (astroid) {
+                return this.getDistanceTo(astroid) < astroid.images.body.image.width * astroid.images.body.scale / 2;
+            };
         }
 
         function Astroid(x, y, size, rotationalSpeed) {
             this.x = x;
             this.y = y;
+            this.zone = grid.getZone(this.x, this.y);
+            this.zone.push(this);
             this.size = size;
             this.rotation = 0;
             this.rotationalSpeed = rotationalSpeed;
@@ -314,6 +372,53 @@
             } else {
                 globalScale *= 1 - (magnitude / zoomPower);
             }
+        }
+
+        function Grid(leftBound, rightBound, topBound, bottomBound, depth) {
+            this.centerX = (leftBound + rightBound) / 2;
+            this.centerY = (topBound + bottomBound) / 2;
+            this.leftBound = leftBound;
+            this.rightBound = rightBound;
+            this.topBound = topBound;
+            this.bottomBound = bottomBound;
+
+            if (depth >= MAX_DEPTH) {
+                this.objects = [];
+            } else {
+                this.topLeft = new Grid(leftBound, this.centerX, topBound, this.centerY, depth + 1);
+                this.topRight = new Grid(this.centerX, rightBound, topBound, this.centerY, depth + 1);
+                this.bottomLeft = new Grid(leftBound, this.centerX, this.centerY, bottomBound, depth + 1);
+                this.bottomRight = new Grid(this.centerX, rightBound, this.centerY, bottomBound, depth + 1);
+            }
+
+            this.getZone = function (x, y) {
+                if (this.objects != undefined) {
+                    return this.objects;
+                } else {
+                    if (x < this.centerX && y < this.centerY) {
+                        return this.topLeft.getZone(x, y);
+                    } else if (x >= this.centerX && y < this.centerY) {
+                        return this.topRight.getZone(x, y);
+                    } else if (x < this.centerX && y >= this.centerY) {
+                        return this.bottomLeft.getZone(x, y);
+                    } else {
+                        return this.bottomRight.getZone(x, y);
+                    }
+                }
+            };
+
+            this.draw = function () {
+                if (this.objects != undefined) {
+                    ctx.strokeStyle = 'yellow';
+                    ctx.lineWidth = 50;
+                    ctx.strokeRect(this.leftBound, this.topBound, this.rightBound - this.leftBound, this.bottomBound - this.topBound);
+                } else {
+                    this.topLeft.draw();
+                    this.topRight.draw();
+                    this.bottomLeft.draw();
+                    this.bottomRight.draw();
+                }
+            };
         }
     </script>
 </body>
