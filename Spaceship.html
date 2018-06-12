@@ -253,18 +253,7 @@
                 }
 
                 for (var i = 0; i < astroids.length; i++) {
-                    var newX = astroids[i].x - this.xVel;
-                    var newY = astroids[i].y - this.yVel;
-                    var newZone = grid.getZone(newX, newY);
-                    if (astroids[i].zone != newZone) {
-                        var index = astroids[i].zone.indexOf(astroids[i]);
-                        astroids[i].zone.splice(index, 1);
-                        newZone.push(astroids[i]);
-                        astroids[i].zone = newZone;
-                    }
-
-                    astroids[i].x = newX;
-                    astroids[i].y = newY;
+                    astroids[i].moveTo(astroids[i].x - this.xVel, astroids[i].y - this.yVel);
                 }
             };
 
@@ -316,6 +305,8 @@
         function Astroid(x, y, size, rotationalSpeed) {
             this.x = x;
             this.y = y;
+            this.xVel = 0;
+            this.yVel = 0;
             this.zone = grid.getZone(this.x, this.y);
             this.zone.push(this);
             this.size = size;
@@ -337,6 +328,21 @@
 
             this.move = function () {
                 this.rotation += this.rotationalSpeed;
+                this.moveTo(this.x + this.xVel, this.y + this.yVel);
+            };
+
+            this.moveTo = function (x, y) {
+                var newZone = grid.getZone(x, y);
+
+                if (this.zone != newZone) {
+                    var index = this.zone.indexOf(this);
+                    this.zone.splice(index, 1);
+                    newZone.push(this);
+                    this.zone = newZone;
+                }
+
+                this.x = x;
+                this.y = y;
             };
         }
 
