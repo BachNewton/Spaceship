@@ -52,25 +52,29 @@
         setInterval(frame, 1000 / 60); // 60 FPS
 
         function frame() {
+            var frameTime = new Stopwatch();
+
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(globalScale, 0, 0, globalScale, -(globalScale - 1) * canvas.width / 2, -(globalScale - 1) * canvas.height / 2);
+            ctx.translate(-spaceship.x + canvas.width / 2, -spaceship.y + canvas.height / 2);
 
             for (var i = 0; i < astroids.length; i++) {
-                astroids[i].move();
                 astroids[i].draw();
+                astroids[i].move();
             }
 
+            spaceship.draw();
             spaceship.update();
             spaceship.move();
-            spaceship.draw();
 
             for (var i = 0; i < lasers.length; i++) {
-                lasers[i].move();
                 lasers[i].draw();
+                lasers[i].move();
 
                 var point = lasers[i].getCollisionPoint();
                 var zone = grid.getZone(point.x, point.y);
+
                 for (var j = 0; j < zone.length; j++) {
                     if (lasers[i].collideWith(zone[j])) {
                         lasers.splice(i, 1);
@@ -83,17 +87,18 @@
                 }
             }
 
-            // \
-            if (keysHeld[220]) {
-                grid.draw();
-            }
-
             ctx.save();
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.fillStyle = 'white';
             ctx.font = '30px Arial';
             ctx.fillText('Remaining Astroids: ' + astroids.length.toLocaleString('en'), 4, 34);
             ctx.restore();
+
+            // \
+            if (keysHeld[220]) {
+                grid.draw();
+                frameTime.draw();
+            }
         }
 
         function Spaceship() {
@@ -247,18 +252,12 @@
             };
 
             this.move = function () {
-                for (var i = 0; i < lasers.length; i++) {
-                    lasers[i].x -= this.xVel;
-                    lasers[i].y -= this.yVel;
-                }
-
-                for (var i = 0; i < astroids.length; i++) {
-                    astroids[i].moveTo(astroids[i].x - this.xVel, astroids[i].y - this.yVel);
-                }
+                this.x += this.xVel;
+                this.y += this.yVel;
             };
 
             this.getGunAngle = function () {
-                return Math.atan2(mouse.y - this.y, mouse.x - this.x);
+                return Math.atan2(mouse.y - canvas.height / 2, mouse.x - canvas.width / 2);
             };
         }
 
@@ -308,6 +307,7 @@
             this.xVel = 0;
             this.yVel = 0;
             this.zone = grid.getZone(this.x, this.y);
+            this.zoneIndex = this.zone.length;
             this.zone.push(this);
             this.size = size;
             this.rotation = 0;
@@ -335,8 +335,8 @@
                 var newZone = grid.getZone(x, y);
 
                 if (this.zone != newZone) {
-                    var index = this.zone.indexOf(this);
-                    this.zone.splice(index, 1);
+                    this.zone.splice(this.zoneIndex, 1);
+                    this.zoneIndex = newZone.length;
                     newZone.push(this);
                     this.zone = newZone;
                 }
@@ -424,6 +424,23 @@
                     this.bottomLeft.draw();
                     this.bottomRight.draw();
                 }
+            };
+        }
+
+        function Stopwatch() {
+            var date = new Date();
+            this.startTime = date.getTime();
+
+            this.draw = function () {
+                var date = new Date();
+                var time = date.getTime() - this.startTime;
+
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.fillStyle = 'white';
+                ctx.font = '15px Arial';
+                ctx.fillText('Time / Frame: ' + time + 'ms', 4, canvas.height - 4);
+                ctx.restore();
             };
         }
     </script>
