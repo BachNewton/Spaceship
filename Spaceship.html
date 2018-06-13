@@ -36,17 +36,17 @@
 
         var spaceship = new Spaceship();
         var lasers = [];
-        var astroids = [];
-        var astroidImage = new Image();
-        astroidImage.src = "Resources/Images/astroid.png";
-        astroids.push(new Astroid(canvas.width * 0.25, canvas.height * 0.25, 1, Math.PI / 256));
-        astroids.push(new Astroid(canvas.width * 0.75, canvas.height * 0.25, 1, Math.PI / 256));
-        astroids.push(new Astroid(canvas.width * 0.25, canvas.height * 0.75, 1, Math.PI / 256));
-        astroids.push(new Astroid(canvas.width * 0.75, canvas.height * 0.75, 1, Math.PI / 256));
+        var asteroids = [];
+        var asteroidImage = new Image();
+        asteroidImage.src = "Resources/Images/asteroid.png";
+        asteroids.push(new Asteroid(canvas.width * 0.2, canvas.height * 0.2, 1, 0, 1, Math.PI / 256));
+        asteroids.push(new Asteroid(canvas.width * 0.8, canvas.height * 0.2, 0, 1, 1, Math.PI / 256));
+        asteroids.push(new Asteroid(canvas.width * 0.2, canvas.height * 0.8, 0, -1, 1, Math.PI / 256));
+        asteroids.push(new Asteroid(canvas.width * 0.8, canvas.height * 0.8, -1, 0, 1, Math.PI / 256));
 
         var density = 4000;
         for (var i = 0; i < density; i++) {
-            astroids.push(new Astroid(Math.random() * 200000 - 100000, Math.random() * 200000 - 100000, Math.random() * 2.75 + 0.25, Math.PI / 256));
+            asteroids.push(new Asteroid(Math.random() * 200000 - 100000, Math.random() * 200000 - 100000, Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 2.75 + 0.25, Math.PI / 256));
         }
 
         var FPS = 60;
@@ -73,9 +73,9 @@
             ctx.setTransform(globalScale, 0, 0, globalScale, -(globalScale - 1) * canvas.width / 2, -(globalScale - 1) * canvas.height / 2);
             ctx.translate(-spaceship.x + canvas.width / 2, -spaceship.y + canvas.height / 2);
 
-            for (var i = 0; i < astroids.length; i++) {
-                astroids[i].draw();
-                astroids[i].move();
+            for (var i = 0; i < asteroids.length; i++) {
+                asteroids[i].draw();
+                asteroids[i].move();
             }
 
             spaceship.draw();
@@ -93,8 +93,8 @@
                     if (lasers[i].collideWith(zone[j])) {
                         lasers.splice(i, 1);
                         i--;
-                        var index = astroids.indexOf(zone[j]);
-                        astroids.splice(index, 1);
+                        var index = asteroids.indexOf(zone[j]);
+                        asteroids.splice(index, 1);
                         zone.splice(j, 1);
                         break;
                     }
@@ -105,7 +105,7 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.fillStyle = 'white';
             ctx.font = '30px Arial';
-            ctx.fillText('Remaining Astroids: ' + astroids.length.toLocaleString('en'), 4, 34);
+            ctx.fillText('Remaining Asteroids: ' + asteroids.length.toLocaleString('en'), 4, 34);
             ctx.restore();
 
             // \
@@ -305,21 +305,21 @@
                 };
             };
 
-            this.getDistanceTo = function (astroid) {
+            this.getDistanceTo = function (asteroid) {
                 var point = this.getCollisionPoint();
-                return Math.hypot(astroid.y - point.y, astroid.x - point.x);
+                return Math.hypot(asteroid.y - point.y, asteroid.x - point.x);
             };
 
-            this.collideWith = function (astroid) {
-                return this.getDistanceTo(astroid) < astroid.images.body.image.width * astroid.images.body.scale / 2;
+            this.collideWith = function (asteroid) {
+                return this.getDistanceTo(asteroid) < asteroid.images.body.image.width * asteroid.images.body.scale / 2;
             };
         }
 
-        function Astroid(x, y, size, rotationalSpeed) {
+        function Asteroid(x, y, xVel, yVel, size, rotationalSpeed) {
             this.x = x;
             this.y = y;
-            this.xVel = 0;
-            this.yVel = 0;
+            this.xVel = xVel;
+            this.yVel = yVel;
             this.zone = grid.getZone(this.x, this.y);
             this.zoneIndex = this.zone.length;
             this.zone.push(this);
@@ -327,7 +327,7 @@
             this.rotation = 0;
             this.rotationalSpeed = rotationalSpeed;
             this.images = {
-                body: { image: astroidImage }
+                body: { image: asteroidImage }
             };
 
             this.images.body.scale = this.size;
