@@ -27,6 +27,9 @@
         var globalScale = 1;
         var MAX_DEPTH = 5;
         var grid = new Grid(-100000, 100000, -100000, 100000, 0);
+        var debugMode = false;
+        var debugKeyWasReleased = true;
+        var debugKeyWasPressed = false;
         document.getElementById('canvas').addEventListener('mousedown', mouseDown);
         document.getElementById('canvas').addEventListener('mouseup', mouseUp);
         document.getElementById('canvas').addEventListener('mousemove', updateMousePosition);
@@ -68,6 +71,19 @@
         function frame() {
             var frameTime = new Stopwatch();
 
+            // \
+            if (keysHeld[220]) {
+                debugKeyWasPressed = true;
+                if (debugKeyWasReleased) {
+                    debugMode = !debugMode;
+                    debugKeyWasReleased = false;
+                }
+            } else {
+                if (debugKeyWasPressed) {
+                    debugKeyWasReleased = true;
+                }
+            }
+
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(globalScale, 0, 0, globalScale, -(globalScale - 1) * canvas.width / 2, -(globalScale - 1) * canvas.height / 2);
@@ -75,6 +91,11 @@
 
             for (var i = 0; i < asteroids.length; i++) {
                 asteroids[i].draw();
+
+                if (debugMode) {
+                    asteroids[i].drawHitBox('rgba(0,0,255,0.2)');
+                }
+
                 asteroids[i].move();
             }
 
@@ -90,6 +111,11 @@
                 var zone = grid.getZone(point.x, point.y);
 
                 for (var j = 0; j < zone.length; j++) {
+
+                    if (debugMode) {
+                        zone[j].drawHitBox('rgba(0,255,0,0.2)');
+                    }
+
                     if (lasers[i].collideWith(zone[j])) {
                         lasers.splice(i, 1);
                         i--;
@@ -108,8 +134,7 @@
             ctx.fillText('Remaining Asteroids: ' + asteroids.length.toLocaleString('en'), 4, 34);
             ctx.restore();
 
-            // \
-            if (keysHeld[220]) {
+            if (debugMode) {
                 grid.draw();
                 frameTime.draw();
             }
@@ -338,6 +363,13 @@
                 ctx.rotate(this.rotation);
                 ctx.drawImage(this.images.body.image, 0 - this.images.body.scale * this.images.body.image.width / 2, 0 - this.images.body.scale * this.images.body.image.height / 2, this.images.body.scale * this.images.body.image.width, this.images.body.scale * this.images.body.image.height);
                 ctx.restore();
+            };
+
+            this.drawHitBox = function (color) {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.images.body.image.width * this.images.body.scale / 2, 0, 2 * Math.PI);
+                ctx.fill();
             };
 
             this.move = function () {
