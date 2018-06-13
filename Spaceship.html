@@ -49,7 +49,21 @@
             astroids.push(new Astroid(Math.random() * 200000 - 100000, Math.random() * 200000 - 100000, Math.random() * 2.75 + 0.25, Math.PI / 256));
         }
 
-        setInterval(frame, 1000 / 60); // 60 FPS
+        var FPS = 60;
+        var INTERVAL = 1000 / FPS;
+        var then = 0;
+        draw();
+
+        function draw(timestamp) {
+            requestAnimationFrame(draw);
+
+            var delta = timestamp - then;
+
+            if (delta > INTERVAL) {
+                then = timestamp - (delta % INTERVAL);
+                frame();
+            }
+        }
 
         function frame() {
             var frameTime = new Stopwatch();
@@ -428,16 +442,14 @@
         }
 
         function Stopwatch() {
-            var date = new Date();
-            this.startTime = date.getTime();
+            this.startTime = performance.now();
 
             this.draw = function () {
-                var date = new Date();
-                var time = date.getTime() - this.startTime;
+                var time = Math.floor(performance.now() - this.startTime);
 
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = 'lime';
                 ctx.font = '15px Arial';
                 ctx.fillText('Time / Frame: ' + time + 'ms', 4, canvas.height - 4);
                 ctx.restore();
