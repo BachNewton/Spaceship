@@ -26,7 +26,7 @@
         var keysHeld = {};
         var globalScale = 1;
         var MAX_DEPTH = 5;
-        var grid = new Grid(-100000, 100000, -100000, 100000, 0);
+        var ROOT_GRID = new Grid(-100000, 100000, -100000, 100000, 0);
         var debugMode = false;
         var debugKeyWasReleased = true;
         var debugKeyWasPressed = false;
@@ -93,7 +93,7 @@
                 asteroids[i].draw();
 
                 if (debugMode) {
-                    asteroids[i].drawHitBox('rgba(0,0,255,0.2)');
+                    asteroids[i].drawHitBox();
                 }
 
                 asteroids[i].move();
@@ -108,12 +108,16 @@
                 lasers[i].move();
 
                 var point = lasers[i].getCollisionPoint();
-                var zone = grid.getZone(point.x, point.y);
+                var grid = ROOT_GRID.getGrid(point.x, point.y);
+                var zone = grid.objects;
+
+                if (debugMode) {
+                    grid.highlight();
+                }
 
                 for (var j = 0; j < zone.length; j++) {
-
                     if (debugMode) {
-                        zone[j].drawHitBox('rgba(0,255,0,0.2)');
+                        zone[j].mark();
                     }
 
                     if (lasers[i].collideWith(zone[j])) {
@@ -135,7 +139,7 @@
             ctx.restore();
 
             if (debugMode) {
-                grid.draw();
+                ROOT_GRID.draw();
                 frameTime.draw();
             }
         }
@@ -345,9 +349,8 @@
             this.y = y;
             this.xVel = xVel;
             this.yVel = yVel;
-            this.zone = grid.getZone(this.x, this.y);
-            this.zoneIndex = this.zone.length;
-            this.zone.push(this);
+            this.grid = ROOT_GRID.getGrid(this.x, this.y);
+            this.grid.objects.push(this);
             this.size = size;
             this.rotation = 0;
             this.rotationalSpeed = rotationalSpeed;
@@ -365,11 +368,22 @@
                 ctx.restore();
             };
 
-            this.drawHitBox = function (color) {
-                ctx.fillStyle = color;
+            this.drawHitBox = function () {
+                ctx.fillStyle = this.grid.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.images.body.image.width * this.images.body.scale / 2, 0, 2 * Math.PI);
                 ctx.fill();
+            };
+
+            this.mark = function () {
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 25;
+                ctx.beginPath();
+                ctx.moveTo(this.x - this.images.body.image.width * this.images.body.scale / 2, this.y - this.images.body.image.height * this.images.body.scale / 2);
+                ctx.lineTo(this.x + this.images.body.image.width * this.images.body.scale / 2, this.y + this.images.body.image.height * this.images.body.scale / 2);
+                ctx.moveTo(this.x + this.images.body.image.width * this.images.body.scale / 2, this.y - this.images.body.image.height * this.images.body.scale / 2);
+                ctx.lineTo(this.x - this.images.body.image.width * this.images.body.scale / 2, this.y + this.images.body.image.height * this.images.body.scale / 2);
+                ctx.stroke();
             };
 
             this.move = function () {
@@ -378,13 +392,13 @@
             };
 
             this.moveTo = function (x, y) {
-                var newZone = grid.getZone(x, y);
+                var newGrid = ROOT_GRID.getGrid(x, y);
 
-                if (this.zone != newZone) {
-                    this.zone.splice(this.zoneIndex, 1);
-                    this.zoneIndex = newZone.length;
-                    newZone.push(this);
-                    this.zone = newZone;
+                if (this.grid != newGrid) {
+                    var index = this.grid.objects.indexOf(this);
+                    this.grid.objects.splice(index, 1);
+                    newGrid.objects.push(this);
+                    this.grid = newGrid;
                 }
 
                 this.x = x;
@@ -436,6 +450,7 @@
 
             if (depth >= MAX_DEPTH) {
                 this.objects = [];
+                this.color = getRandomColor(0.8);
             } else {
                 this.topLeft = new Grid(leftBound, this.centerX, topBound, this.centerY, depth + 1);
                 this.topRight = new Grid(this.centerX, rightBound, topBound, this.centerY, depth + 1);
@@ -443,18 +458,18 @@
                 this.bottomRight = new Grid(this.centerX, rightBound, this.centerY, bottomBound, depth + 1);
             }
 
-            this.getZone = function (x, y) {
+            this.getGrid = function (x, y) {
                 if (this.objects != undefined) {
-                    return this.objects;
+                    return this;
                 } else {
                     if (x < this.centerX && y < this.centerY) {
-                        return this.topLeft.getZone(x, y);
+                        return this.topLeft.getGrid(x, y);
                     } else if (x >= this.centerX && y < this.centerY) {
-                        return this.topRight.getZone(x, y);
+                        return this.topRight.getGrid(x, y);
                     } else if (x < this.centerX && y >= this.centerY) {
-                        return this.bottomLeft.getZone(x, y);
+                        return this.bottomLeft.getGrid(x, y);
                     } else {
-                        return this.bottomRight.getZone(x, y);
+                        return this.bottomRight.getGrid(x, y);
                     }
                 }
             };
@@ -471,6 +486,11 @@
                     this.bottomRight.draw();
                 }
             };
+
+            this.highlight = function () {
+                ctx.fillStyle = 'rgba(255,255,0,0.1)';
+                ctx.fillRect(this.leftBound, this.topBound, this.rightBound - this.leftBound, this.bottomBound - this.topBound);
+            };
         }
 
         function Stopwatch() {
@@ -486,6 +506,13 @@
                 ctx.fillText('Time / Frame: ' + time + 'ms', 4, canvas.height - 4);
                 ctx.restore();
             };
+        }
+
+        function getRandomColor(alpha) {
+            var r = Math.floor(Math.random() * 256);
+            var g = Math.floor(Math.random() * 256);
+            var b = Math.floor(Math.random() * 256);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
         }
     </script>
 </body>
