@@ -7,6 +7,7 @@
     <style>
         body {
             background-color: black;
+            color: white;
         }
 
         canvas {
@@ -17,6 +18,10 @@
 
 <body>
     <canvas id="canvas" width="1280" height="720"></canvas>
+    <br> Use 'WASD' to fire your thrusters
+    <br> Click to shoot your lasers
+    <br> Scroll to zoom in and out
+    <br> Press 'F' to drop a space station block
 
     <script>
         var canvas = document.getElementById('canvas');
@@ -42,6 +47,7 @@
         var lasers = [];
         var asteroids = [];
         var explosions = [];
+        var blocks = [];
         var asteroidImage = new Image();
         asteroidImage.src = "Resources/Images/asteroid.png";
         var explosionImage = new Image();
@@ -78,6 +84,7 @@
             debugCheck();
             moveCamera();
             drawAsteroids();
+            drawBlocks();
             drawSpaceship();
             drawLasers();
             drawExplosions();
@@ -115,6 +122,13 @@
                 }
 
                 asteroids[i].move();
+            }
+        }
+
+        function drawBlocks() {
+            for (var i = 0; i < blocks.length; i++) {
+                blocks[i].draw();
+                blocks[i].move();
             }
         }
 
@@ -207,6 +221,25 @@
             }
         }
 
+        function Block(x, y, xVel, yVel) {
+            this.x = x;
+            this.y = y;
+            this.xVel = xVel;
+            this.yVel = yVel;
+            this.images = {
+                body: spaceship.images.block
+            };
+
+            this.draw = function () {
+                ctx.drawImage(this.images.body.image, this.x - this.images.body.image.width / 2, this.y - this.images.body.image.height / 2, this.images.body.image.width, this.images.body.image.height);
+            };
+
+            this.move = function () {
+                this.x += this.xVel;
+                this.y += this.yVel;
+            };
+        }
+
         function Spaceship() {
             this.x = canvas.width / 2;
             this.y = canvas.height / 2;
@@ -229,7 +262,8 @@
                 rcs: { image: new Image() },
                 gun: { image: new Image() },
                 laser: { image: new Image() },
-                heart: { image: new Image() }
+                heart: { image: new Image() },
+                block: { image: new Image() }
             };
 
             this.images.body.image.src = "Resources/Images/spaceship.png";
@@ -246,6 +280,9 @@
 
             this.images.heart.image.src = "Resources/Images/heart.png";
             this.images.heart.scale = 0.04;
+
+            this.images.block.image.src = "Resources/Images/block.jpg";
+            this.images.block.scale = 0.25;
 
             this.draw = function () {
                 if (this.visable) {
@@ -357,6 +394,11 @@
                     this.thrustRight();
                 } else {
                     this.thrustRightStop();
+                }
+
+                // F
+                if (keysHeld[70]) {
+                    blocks.push(new Block(this.x, this.y, this.xVel, this.yVel));
                 }
 
                 // Mouse Held
