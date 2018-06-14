@@ -27,6 +27,7 @@
         var globalScale = 1;
         var MAX_DEPTH = 5;
         var ROOT_GRID = new Grid(-100000, 100000, -100000, 100000, 0);
+        var frameStopwatch = new FrameStopwatch();
         var debugMode = false;
         var debugKeyWasReleased = true;
         var debugKeyWasPressed = false;
@@ -69,7 +70,7 @@
         }
 
         function frame() {
-            var frameTime = new Stopwatch();
+            frameStopwatch.reset();
 
             // \
             if (keysHeld[220]) {
@@ -140,7 +141,7 @@
 
             if (debugMode) {
                 ROOT_GRID.draw();
-                frameTime.draw();
+                frameStopwatch.draw();
             }
         }
 
@@ -180,7 +181,6 @@
                 if (this.rcsUp) {
                     ctx.save();
                     ctx.translate(this.x, this.y);
-                    ctx.rotate(0);
                     ctx.drawImage(this.images.rcs.image, 0 - this.images.rcs.scale * this.images.rcs.image.width / 2, 0 - this.images.rcs.scale * this.images.rcs.image.height, this.images.rcs.scale * this.images.rcs.image.width, this.images.rcs.scale * this.images.rcs.image.height);
                     ctx.restore();
                 }
@@ -443,14 +443,14 @@
         function Grid(leftBound, rightBound, topBound, bottomBound, depth) {
             this.centerX = (leftBound + rightBound) / 2;
             this.centerY = (topBound + bottomBound) / 2;
-            this.leftBound = leftBound;
-            this.rightBound = rightBound;
-            this.topBound = topBound;
-            this.bottomBound = bottomBound;
 
             if (depth >= MAX_DEPTH) {
                 this.objects = [];
                 this.color = getRandomColor(0.8);
+                this.leftBound = leftBound;
+                this.rightBound = rightBound;
+                this.topBound = topBound;
+                this.bottomBound = bottomBound;
             } else {
                 this.topLeft = new Grid(leftBound, this.centerX, topBound, this.centerY, depth + 1);
                 this.topRight = new Grid(this.centerX, rightBound, topBound, this.centerY, depth + 1);
@@ -493,8 +493,12 @@
             };
         }
 
-        function Stopwatch() {
+        function FrameStopwatch() {
             this.startTime = performance.now();
+
+            this.reset = function () {
+                this.startTime = performance.now();
+            };
 
             this.draw = function () {
                 var time = Math.floor(performance.now() - this.startTime);
