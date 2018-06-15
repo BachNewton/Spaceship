@@ -129,6 +129,14 @@
             for (var i = 0; i < blocks.length; i++) {
                 blocks[i].draw();
                 blocks[i].move();
+
+                if (!blocks[i].connected) {
+                    var zone = blocks[i].grid.objects.blocks;
+
+                    for (var j = 0; j < zone.length; j++) {
+                        blocks[i].checkConnection(zone[j]);
+                    }
+                }
             }
         }
 
@@ -142,7 +150,7 @@
             spaceship.update();
             spaceship.move();
 
-            var zone = ROOT_GRID.getGrid(spaceship.x, spaceship.y).objects;
+            var zone = ROOT_GRID.getGrid(spaceship.x, spaceship.y).objects.asteroids;
 
             for (var i = 0; i < zone.length; i++) {
                 if (spaceship.collideWith(zone[i])) {
@@ -158,7 +166,7 @@
 
                 var point = lasers[i].getCollisionPoint();
                 var grid = ROOT_GRID.getGrid(point.x, point.y);
-                var zone = grid.objects;
+                var zone = grid.objects.asteroids;
 
                 if (debugMode) {
                     grid.highlight();
@@ -226,6 +234,9 @@
             this.y = y;
             this.xVel = xVel;
             this.yVel = yVel;
+            this.grid = ROOT_GRID.getGrid(this.x, this.y);
+            this.grid.objects.blocks.push(this);
+            this.connected = false;
             this.images = {
                 body: spaceship.images.block
             };
@@ -235,8 +246,70 @@
             };
 
             this.move = function () {
-                this.x += this.xVel;
-                this.y += this.yVel;
+                this.moveTo(this.x + this.xVel, this.y + this.yVel);
+            };
+
+            this.moveTo = function (x, y) {
+                var newGrid = ROOT_GRID.getGrid(x, y);
+
+                if (this.grid != newGrid) {
+                    var index = this.grid.objects.blocks.indexOf(this);
+                    this.grid.objects.blocks.splice(index, 1);
+                    newGrid.objects.blocks.push(this);
+                    this.grid = newGrid;
+                }
+
+                this.x = x;
+                this.y = y;
+            };
+
+            this.getCollisionRect = function () {
+                return {
+                    x: this.x - this.images.body.image.width / 2,
+                    y: this.y - this.images.body.image.height / 2,
+                    width: this.images.body.image.width,
+                    height: this.images.body.image.height
+                };
+            };
+
+            this.checkConnection = function (block) {
+                if (this != block) {
+                    var rect1 = this.getCollisionRect();
+                    var rect2 = block.getCollisionRect();
+
+                    if (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y) {
+                        this.connected = true;
+                        block.connected = true;
+
+                        var deltaX = this.x - block.x;
+                        var deltaY = this.y - block.y;
+
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            // Left Side
+                            if (deltaX < 0) {
+                                this.x = block.x - rect2.width;
+                            }
+                            // Right Side
+                            else {
+                                this.x = block.x + rect2.width;
+                            }
+                            this.y = block.y;
+                        } else {
+                            // Top Side
+                            if (deltaY < 0) {
+                                this.y = block.y - rect2.height;
+                            }
+                            // Bottom Side
+                            else {
+                                this.y = block.y + rect2.height;
+                            }
+                            this.x = block.x;
+                        }
+
+                        this.xVel = block.xVel;
+                        this.yVel = block.yVel;
+                    }
+                }
             };
         }
 
@@ -249,6 +322,8 @@
             this.laserSpeed = 25;
             this.laserCooldown = 0;
             this.laserCooldownFilled = 15;
+            this.blockCooldown = 0;
+            this.blockCooldownFilled = 30;
             this.hitPoints = 10;
             this.invicibilityFrames = 0;
             this.visable = true;
@@ -356,6 +431,7 @@
 
             this.update = function () {
                 this.laserCooldown--;
+                this.blockCooldown--;
                 this.invicibilityFrames--;
 
                 if (this.invicibilityFrames > 0) {
@@ -398,7 +474,10 @@
 
                 // F
                 if (keysHeld[70]) {
-                    blocks.push(new Block(this.x, this.y, this.xVel, this.yVel));
+                    if (this.blockCooldown <= 0) {
+                        blocks.push(new Block(this.x, this.y, this.xVel, this.yVel));
+                        this.blockCooldown = this.blockCooldownFilled;
+                    }
                 }
 
                 // Mouse Held
@@ -510,7 +589,7 @@
             this.xVel = xVel;
             this.yVel = yVel;
             this.grid = ROOT_GRID.getGrid(this.x, this.y);
-            this.grid.objects.push(this);
+            this.grid.objects.asteroids.push(this);
             this.size = size;
             this.rotation = 0;
             this.rotationalSpeed = rotationalSpeed;
@@ -555,9 +634,9 @@
                 var newGrid = ROOT_GRID.getGrid(x, y);
 
                 if (this.grid != newGrid) {
-                    var index = this.grid.objects.indexOf(this);
-                    this.grid.objects.splice(index, 1);
-                    newGrid.objects.push(this);
+                    var index = this.grid.objects.asteroids.indexOf(this);
+                    this.grid.objects.asteroids.splice(index, 1);
+                    newGrid.objects.asteroids.push(this);
                     this.grid = newGrid;
                 }
 
@@ -632,7 +711,10 @@
             this.centerY = (topBound + bottomBound) / 2;
 
             if (depth >= MAX_DEPTH) {
-                this.objects = [];
+                this.objects = {
+                    asteroids: [],
+                    blocks: []
+                };
                 this.color = getRandomColor(0.8);
                 this.leftBound = leftBound;
                 this.rightBound = rightBound;
