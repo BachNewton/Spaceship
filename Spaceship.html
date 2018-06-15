@@ -128,12 +128,6 @@
         function drawBlocks() {
             for (var i = 0; i < blocks.length; i++) {
                 blocks[i].draw();
-
-                ctx.fillStyle = 'white';
-                ctx.font = '75px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(i, blocks[i].x, blocks[i].y);
-
                 blocks[i].move();
 
                 if (!blocks[i].connected) {
@@ -246,6 +240,7 @@
             this.grid = ROOT_GRID.getGrid(this.x, this.y);
             this.grid.objects.blocks.push(this);
             this.connected = false;
+            this.checked = false;
             this.images = {
                 body: spaceship.images.block
             };
@@ -279,6 +274,42 @@
                     width: this.images.body.image.width,
                     height: this.images.body.image.height
                 };
+            };
+
+            this.findAdjacentBlocks = function (block, x, y) {
+                this.checked = true;
+
+                if (x == -1 && y == 0) {
+                    this.right = block;
+                    block.left = this;
+                } else if (x == 1 && y == 0) {
+                    this.left = block;
+                    block.right = this;
+                } else if (x == 0 && y == -1) {
+                    this.bottom = block;
+                    block.top = this;
+                } else if (x == 0 && y == 1) {
+                    this.top = block;
+                    block.bottom = this;
+                }
+
+                if (this.left != undefined && !this.left.checked) {
+                    this.left.findAdjacentBlocks(block, x - 1, y);
+                }
+
+                if (this.right != undefined && !this.right.checked) {
+                    this.right.findAdjacentBlocks(block, x + 1, y);
+                }
+
+                if (this.top != undefined && !this.top.checked) {
+                    this.top.findAdjacentBlocks(block, x, y - 1);
+                }
+
+                if (this.bottom != undefined && !this.bottom.checked) {
+                    this.bottom.findAdjacentBlocks(block, x, y + 1);
+                }
+
+                this.checked = false;
             };
 
             this.checkConnection = function (block) {
@@ -333,6 +364,7 @@
                             block.connected = true;
                             this.xVel = block.xVel;
                             this.yVel = block.yVel;
+                            this.findAdjacentBlocks(this, 0, 0);
                         }
                     }
                 }
