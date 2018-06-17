@@ -20,8 +20,9 @@
     <canvas id="canvas" width="1280" height="720"></canvas>
     <br> Use 'WASD' to fire your thrusters
     <br> Click to shoot your lasers
-    <br> Scroll to zoom in and out
+    <br> Destroy asteroids to collect space station parts
     <br> Press 'F' to drop a space station block
+    <br> Scroll to zoom in and out
 
     <script>
         var canvas = document.getElementById('canvas');
@@ -30,8 +31,8 @@
         var mouseHeld = false;
         var keysHeld = {};
         var globalScale = 1;
-        var MAX_DEPTH = 5;
-        var ROOT_GRID = new Grid(-100000, 100000, -100000, 100000, 0);
+        var MAX_DEPTH = 6;
+        var ROOT_GRID = new Grid(-200000, 200000, -200000, 200000, 0);
         var frameStopwatch = new FrameStopwatch();
         var debugMode = false;
         var debugKeyWasReleased = true;
@@ -48,10 +49,13 @@
         var asteroids = [];
         var explosions = [];
         var blocks = [];
+        var parts = [];
         var asteroidImage = new Image();
         asteroidImage.src = "Resources/Images/asteroid.png";
         var explosionImage = new Image();
         explosionImage.src = "Resources/Images/explosion.png";
+        var partImage = new Image();
+        partImage.src = "Resources/Images/part.png";
 
         asteroids.push(new Asteroid(canvas.width * 0.2, canvas.height * 0.2, 1, 0, 1, Math.PI / 256));
         asteroids.push(new Asteroid(canvas.width * 0.8, canvas.height * 0.2, 0, 1, 1, Math.PI / 256));
@@ -87,6 +91,7 @@
             drawBlocks();
             drawSpaceship();
             drawLasers();
+            drawParts();
             drawExplosions();
             drawHUD();
         }
@@ -156,8 +161,20 @@
             var zone = ROOT_GRID.getGrid(spaceship.x, spaceship.y).objects.asteroids;
 
             for (var i = 0; i < zone.length; i++) {
-                if (spaceship.collideWith(zone[i])) {
+                if (spaceship.collideWithAsteroid(zone[i])) {
                     spaceship.hit();
+                }
+            }
+
+            zone = ROOT_GRID.getGrid(spaceship.x, spaceship.y).objects.parts;
+
+            for (var i = 0; i < zone.length; i++) {
+                if (spaceship.collideWithPart(zone[i])) {
+                    spaceship.pickUpPart();
+                    var index = parts.indexOf(zone[i]);
+                    parts.splice(index, 1);
+                    zone.splice(i, 1);
+                    i--;
                 }
             }
         }
@@ -182,6 +199,7 @@
 
                     if (lasers[i].collideWith(zone[j])) {
                         explosions.push(new Explosion(point.x, point.y, zone[j].xVel, zone[j].yVel));
+                        makeParts(lasers[i], zone[j]);
                         lasers.splice(i, 1);
                         i--;
                         var index = asteroids.indexOf(zone[j]);
@@ -190,6 +208,34 @@
                         break;
                     }
                 }
+            }
+        }
+
+        function makeParts(laser, asteroid) {
+            var point = laser.getCollisionPoint();
+            var angle = laser.angle;
+            var xVel = asteroid.xVel;
+            var yVel = asteroid.yVel;
+            var speed = 3;
+
+            var numOfParts = Math.floor(asteroid.size / 0.5);
+
+            for (var i = 0; i < numOfParts; i++) {
+                var thisAngle = angle + Math.random() * Math.PI / 2 - Math.PI / 4;
+                var part = new Part(point.x, point.y, xVel + speed * Math.cos(thisAngle), yVel + speed * Math.sin(thisAngle), thisAngle);
+                parts.push(part);
+            }
+        }
+
+        function drawParts() {
+            for (var i = 0; i < parts.length; i++) {
+                parts[i].draw();
+
+                if (debugMode) {
+                    parts[i].drawHitBox();
+                }
+
+                parts[i].move();
             }
         }
 
@@ -213,7 +259,7 @@
             ctx.fillStyle = 'white';
             ctx.font = '30px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText('Remaining Asteroids: ' + asteroids.length.toLocaleString('en'), 4, 34);
+            ctx.fillText('Space Station Parts: ' + spaceship.parts.toLocaleString('en'), 4, 34);
 
             if (spaceship.hitPoints <= 0) {
                 ctx.fillStyle = 'red';
@@ -377,6 +423,7 @@
             this.xVel = 0;
             this.yVel = 0;
             this.thrust = 0.25;
+            this.parts = 0;
             this.laserSpeed = 25;
             this.laserCooldown = 0;
             this.laserCooldownFilled = 15;
@@ -487,6 +534,10 @@
                 }
             };
 
+            this.pickUpPart = function () {
+                this.parts++;
+            };
+
             this.update = function () {
                 this.laserCooldown--;
                 this.blockCooldown--;
@@ -532,7 +583,8 @@
 
                 // F
                 if (keysHeld[70]) {
-                    if (this.blockCooldown <= 0) {
+                    if (this.blockCooldown <= 0 && this.parts > 0) {
+                        this.parts--;
                         blocks.push(new Block(this.x, this.y, this.xVel, this.yVel));
                         this.blockCooldown = this.blockCooldownFilled;
                     }
@@ -596,8 +648,12 @@
                 return Math.hypot(circle.y - this.y, circle.x - this.x);
             };
 
-            this.collideWith = function (circle) {
-                return this.getDistanceTo(circle) < circle.images.body.image.width * circle.images.body.scale / 2 + this.images.body.image.height * this.images.body.scale / 2;
+            this.collideWithAsteroid = function (asteroid) {
+                return this.getDistanceTo(asteroid) < asteroid.images.body.image.width * asteroid.images.body.scale / 2 + this.images.body.image.height * this.images.body.scale / 2;
+            };
+
+            this.collideWithPart = function (part) {
+                return this.getDistanceTo(part) < part.images.body.image.height * part.images.body.scale / 2 + this.images.body.image.height * this.images.body.scale / 2;
             };
         }
 
@@ -703,6 +759,54 @@
             };
         }
 
+        function Part(x, y, xVel, yVel, angle) {
+            this.x = x;
+            this.y = y;
+            this.xVel = xVel;
+            this.yVel = yVel;
+            this.angle = angle;
+            this.grid = ROOT_GRID.getGrid(this.x, this.y);
+            this.grid.objects.parts.push(this);
+            this.images = {
+                body: { image: partImage }
+            };
+
+            this.images.body.scale = 0.2;
+
+            this.draw = function () {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle + Math.PI / 2);
+                ctx.drawImage(this.images.body.image, 0 - this.images.body.scale * this.images.body.image.width / 2, 0 - this.images.body.scale * this.images.body.image.height / 2, this.images.body.scale * this.images.body.image.width, this.images.body.scale * this.images.body.image.height);
+                ctx.restore();
+            };
+
+            this.drawHitBox = function () {
+                ctx.fillStyle = this.grid.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.images.body.image.height * this.images.body.scale / 2, 0, 2 * Math.PI);
+                ctx.fill();
+            };
+
+            this.move = function () {
+                this.moveTo(this.x + this.xVel, this.y + this.yVel);
+            };
+
+            this.moveTo = function (x, y) {
+                var newGrid = ROOT_GRID.getGrid(x, y);
+
+                if (this.grid != newGrid) {
+                    var index = this.grid.objects.parts.indexOf(this);
+                    this.grid.objects.parts.splice(index, 1);
+                    newGrid.objects.parts.push(this);
+                    this.grid = newGrid;
+                }
+
+                this.x = x;
+                this.y = y;
+            };
+        }
+
         function Explosion(x, y, xVel, yVel) {
             this.x = x;
             this.y = y;
@@ -771,7 +875,8 @@
             if (depth >= MAX_DEPTH) {
                 this.objects = {
                     asteroids: [],
-                    blocks: []
+                    blocks: [],
+                    parts: []
                 };
                 this.color = getRandomColor(0.8);
                 this.leftBound = leftBound;
