@@ -18,6 +18,7 @@ function Spaceship() {
     this.rcsLeft = false;
     this.rcsDown = false;
     this.rcsRight = false;
+    this.rcsSound = new Audio("Resources/Sounds/rcs.wav");
     this.images = {
         body: { image: new Image() },
         rcs: { image: new Image() },
@@ -117,6 +118,7 @@ function Spaceship() {
 
     this.pickUpPart = function () {
         this.parts++;
+        new Audio("Resources/Sounds/pickUpPart.wav").play();
     };
 
     this.update = function () {
@@ -133,6 +135,14 @@ function Spaceship() {
         } else {
             this.visable = true;
         }
+
+        // if (this.rcsLeft || this.rcsRight || this.rcsUp || this.rcsDown) {
+        //     if (this.rcsSound.paused) {
+        //         this.rcsSound.play();
+        //     } else if (this.rcsSound.currentTime >= 0.4) {
+        //         this.rcsSound.currentTime = 0;
+        //     }
+        // }
 
         // W
         if (keysHeld[87]) {
@@ -165,6 +175,7 @@ function Spaceship() {
         // F
         if (keysHeld[70]) {
             if (this.blockCooldown <= 0 && this.parts > 0) {
+                new Audio("Resources/Sounds/dropBlock.wav").play();
                 this.parts--;
                 blocks.push(new Block(this.x, this.y, this.xVel, this.yVel));
                 this.blockCooldown = this.blockCooldownFilled;

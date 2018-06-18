@@ -4,6 +4,7 @@ function Explosion(x, y, xVel, yVel) {
     this.xVel = xVel;
     this.yVel = yVel;
     this.life = 40;
+    new Audio("Resources/Sounds/explosion.wav").play();
     this.images = {
         body: { image: explosionImage }
     };

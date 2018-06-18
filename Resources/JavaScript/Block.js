@@ -126,6 +126,7 @@ function Block(x, y, xVel, yVel) {
                 }
 
                 if (foundConnection) {
+                    new Audio("Resources/Sounds/snapIntoPlace.wav").play();
                     this.connected = true;
                     block.connected = true;
                     this.xVel = block.xVel;

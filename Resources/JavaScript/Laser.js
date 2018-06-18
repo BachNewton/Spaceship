@@ -4,6 +4,7 @@ function Laser(spaceship) {
     this.angle = spaceship.getGunAngle();
     this.xVel = spaceship.xVel + Math.cos(this.angle) * spaceship.laserSpeed;
     this.yVel = spaceship.yVel + Math.sin(this.angle) * spaceship.laserSpeed;
+    new Audio("Resources/Sounds/laser.wav").play();
     this.images = {
         laser: spaceship.images.laser
     };
