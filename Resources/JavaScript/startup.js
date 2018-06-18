@@ -17,6 +17,8 @@ document.getElementById('canvas').addEventListener('wheel', scrollWheel);
 document.addEventListener('keydown', keyDown);
 document.addEventListener('keyup', keyUp);
 
+var planets = [];
+var moons = [];
 var spaceship = new Spaceship();
 var lasers = [];
 var asteroids = [];
@@ -29,6 +31,13 @@ var explosionImage = new Image();
 explosionImage.src = "Resources/Images/explosion.png";
 var partImage = new Image();
 partImage.src = "Resources/Images/part.png";
+
+planets.push(new Planet(-50000, -50000, "planetA.png", 10));
+planets.push(new Planet(50000, -50000, "planetB.png", 20));
+planets.push(new Planet(-50000, 50000, "planetC.png", 10));
+planets.push(new Planet(50000, 50000, "planetD.png", 10));
+
+moons.push(new Moon(planets[1], 20000, Math.PI / 2048, "moonB.png", 3));
 
 asteroids.push(new Asteroid(canvas.width * 0.2, canvas.height * 0.2, 1, 0, 1, Math.PI / 256));
 asteroids.push(new Asteroid(canvas.width * 0.8, canvas.height * 0.2, 0, 1, 1, Math.PI / 256));

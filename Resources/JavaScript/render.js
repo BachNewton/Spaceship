@@ -18,6 +18,7 @@ function frame() {
     frameStopwatch.reset();
     debugCheck();
     moveCamera();
+    drawPlanetsAndMoons();
     drawAsteroids();
     drawBlocks();
     drawSpaceship();
@@ -47,6 +48,17 @@ function moveCamera() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(globalScale, 0, 0, globalScale, -(globalScale - 1) * canvas.width / 2, -(globalScale - 1) * canvas.height / 2);
     ctx.translate(-spaceship.x + canvas.width / 2, -spaceship.y + canvas.height / 2);
+}
+
+function drawPlanetsAndMoons() {
+    for (var i = 0; i < planets.length; i++) {
+        planets[i].draw();
+    }
+
+    for (var i = 0; i < moons.length; i++) {
+        moons[i].draw();
+        moons[i].move();
+    }
 }
 
 function drawAsteroids() {
